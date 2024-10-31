@@ -5,9 +5,16 @@ import java.util.Date;
 public class PenghitungUmurFrame extends javax.swing.JFrame {
 
  private PenghitungUmurHelper helper;
+ // Flag to control the fetching process and allow thread interruption
+private volatile boolean stopFetching = false;
+
+// Thread instance to handle fetching events asynchronously
+private Thread peristiwaThread;
+
     public PenghitungUmurFrame() {
         initComponents();
         helper = new PenghitungUmurHelper();
+        
     }
 
     /**
@@ -31,9 +38,12 @@ public class PenghitungUmurFrame extends javax.swing.JFrame {
         jLabel4 = new javax.swing.JLabel();
         jPanel2 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
-        jTextArea1 = new javax.swing.JTextArea();
+        txtAreaPeristiwa = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setBackground(new java.awt.Color(204, 204, 255));
+
+        jPanel1.setBackground(new java.awt.Color(182, 210, 210));
 
         jLabel1.setFont(new java.awt.Font("Gill Sans MT", 1, 14)); // NOI18N
         jLabel1.setText("Pilih Tanggal Lahir");
@@ -71,13 +81,18 @@ public class PenghitungUmurFrame extends javax.swing.JFrame {
 
         btnKeluar.setFont(new java.awt.Font("Tahoma", 1, 12)); // NOI18N
         btnKeluar.setText("Keluar");
+        btnKeluar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnKeluarActionPerformed(evt);
+            }
+        });
 
         jLabel4.setFont(new java.awt.Font("Gill Sans MT", 1, 24)); // NOI18N
         jLabel4.setText("Aplikasi Penghitung Umur");
 
-        jTextArea1.setColumns(20);
-        jTextArea1.setRows(5);
-        jScrollPane1.setViewportView(jTextArea1);
+        txtAreaPeristiwa.setColumns(20);
+        txtAreaPeristiwa.setRows(5);
+        jScrollPane1.setViewportView(txtAreaPeristiwa);
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
@@ -207,9 +222,48 @@ public class PenghitungUmurFrame extends javax.swing.JFrame {
         
         // Display next birthday day and date in txtHariUlangTahunBerikutnya
         txtHariUlangTahunBerikutnya.setText(hariUlangTahunBerikutnya + " (" + tanggalUlangTahunBerikutnya + ")");
+        
+        // Set stop flag untuk thread sebelumnya
+    stopFetching = true;
+    if (peristiwaThread != null && peristiwaThread.isAlive()) {
+    peristiwaThread.interrupt(); // Beri sinyal ke thread untuk berhenti
+}
+
+// Reset flag untuk thread baru
+    stopFetching = false;
+
+// Mendapatkan peristiwa penting secara asinkron
+    peristiwaThread = new Thread(() -> {
+    try {
+        txtAreaPeristiwa.setText("Tunggu, sedang mengambil data...\n");
+
+        // Mengambil data peristiwa secara baris per baris
+        helper.getPeristiwaBarisPerBaris(ulangTahunBerikutnya, txtAreaPeristiwa, () -> stopFetching);
+
+        if (!stopFetching) {
+            javax.swing.SwingUtilities.invokeLater(() ->
+                txtAreaPeristiwa.append("Selesai mengambil data peristiwa")
+            );
+        }
+    } catch (Exception e) {
+        if (Thread.currentThread().isInterrupted()) {
+            javax.swing.SwingUtilities.invokeLater(() ->
+                txtAreaPeristiwa.setText("Pengambilan data dibatalkan.\n")
+            );
+        }
+    }
+}
+);
+
+// Memulai thread peristiwa
+peristiwaThread.start();
     }
     
     }//GEN-LAST:event_btnHitungActionPerformed
+
+    private void btnKeluarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnKeluarActionPerformed
+        System.exit(0);
+    }//GEN-LAST:event_btnKeluarActionPerformed
 
     /**
      * @param args the command line arguments
@@ -257,7 +311,7 @@ public class PenghitungUmurFrame extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JTextArea jTextArea1;
+    private javax.swing.JTextArea txtAreaPeristiwa;
     private javax.swing.JTextField txtHariUlangTahunBerikutnya;
     private javax.swing.JTextField txtUmur;
     // End of variables declaration//GEN-END:variables
